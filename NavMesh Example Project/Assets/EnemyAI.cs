@@ -23,6 +23,8 @@ public class EnemyAI : MonoBehaviour
     public GameObject target;
     public UnityEngine.AI.NavMeshAgent agent;
     public WayPoint[] patrolPoints;
+
+    private bool isPlayerInCone = false;
     private int patternIndex = 0;
     private bool speedChanged = false;
     private bool paused = false;
@@ -40,12 +42,15 @@ public class EnemyAI : MonoBehaviour
         {
             case State.Patrol:
                 patrolBehaviour();
+                checkForPlayer();
                 break;
             case State.Chase:
                 chaseBehaviour();
+                checkForPlayer();
                 break;
             case State.LostSight:
                 lostSightBehaviour();
+                checkForPlayer();
                 break;
         }
     }
@@ -94,6 +99,42 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    private void checkForPlayer()
+    {
+        if (isPlayerInCone)
+        {
+            Ray ray = new Ray(gameObject.transform.position, gameObject.transform.position - target.transform.position);
+            RaycastHit hitData;
+
+            if(Physics.Raycast(ray, out hitData))
+            {
+                if(hitData.transform.gameObject.tag == "Player")
+                {
+                    state = State.Chase;
+                }
+                else if(state == State.Chase)
+                {
+                    state = State.LostSight;
+                }
+            }
+            else if(state == State.Chase)
+            {
+                state = State.LostSight; 
+            }
+        }
+        else
+        {
+            state = State.LostSight;
+        }
+            //cast a ray
+            //if ray hits
+                //state is changed to chase mode
+            //else if it does not hit AND state is chase
+                //state is changed to lost sight
+        //else if player not in cone
+            //state is changed to lost sight
+    }
+
     IEnumerator pauseAfterReachingDestination(float time)
     {
         yield return new WaitForSeconds(time);
@@ -103,5 +144,15 @@ public class EnemyAI : MonoBehaviour
             state = State.Patrol;
             agent.SetDestination(patrolPoints[patternIndex].waypoint.transform.position);
         }
+    }
+
+    public void playerEnteredCone()
+    {
+        isPlayerInCone = true;
+    }
+
+    public void playerExitedCone()
+    {
+        isPlayerInCone = false;
     }
 }
